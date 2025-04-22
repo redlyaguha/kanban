@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from . import crud, models, schemas
 from .database import SessionLocal, engine
+from fastapi.responses import FileResponse
 from .auth import get_current_user, oauth2_scheme
 
 models.Base.metadata.create_all(bind=engine)
@@ -68,3 +69,11 @@ async def login_for_access_token(
         )
     access_token = create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/")
+def read_root():
+    return {"message": "kanban"}
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse("kanban/app/kanban.ico")
