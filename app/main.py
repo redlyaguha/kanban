@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from . import crud, models, schemas
 from .database import SessionLocal, engine
+from .auth import get_current_user, oauth2_scheme
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -53,3 +54,17 @@ def create_task(
     current_user: models.User = Depends(get_current_user)
 ):
     return crud.create_task(db=db, task=task, column_id=column_id, author_id=current_user.id)
+
+@app.post("/token", response_model=schemas.Token)
+async def login_for_access_token(
+    form_data: schemas.UserLogin,
+    db: Session = Depends(get_db)
+):
+    user = crud.get_user_by_email(db, email=form_data.email)
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+        )
+    access_token = create_access_token(data={"sub": user.email})
+    return {"access_token": access_token, "token_type": "bearer"}

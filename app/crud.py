@@ -6,8 +6,8 @@ def get_user(db: Session, user_id: int):
     return db.query(models.User).filter(models.User.id == user_id).first()
 
 def create_user(db: Session, user: schemas.UserCreate):
-    fake_hashed_password = user.password + "_notreallyhashed"
-    db_user = models.User(email=user.email, hashed_password=fake_hashed_password)
+    hashed_password = get_password_hash(user.password)  # Используем хеширование
+    db_user = models.User(email=user.email, hashed_password=hashed_password)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -34,3 +34,6 @@ def create_task(db: Session, task: schemas.TaskCreate, column_id: int, author_id
     db.commit()
     db.refresh(db_task)
     return db_task
+
+def get_user_by_email(db: Session, email: str):
+    return db.query(models.User).filter(models.User.email == email).first()

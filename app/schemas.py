@@ -39,3 +39,14 @@ class TaskLogResponse(BaseModel):
     user_id: int
     class Config:
         from_attributes = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    email: str | None = None
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
