@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from . import crud, models, schemas
 from .database import get_db
 
-# Секретный ключ и алгоритм (замените на свои)
+# Секретный ключ и алгоритм
 SECRET_KEY = "123"
 ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
