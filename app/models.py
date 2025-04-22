@@ -28,7 +28,7 @@ class Project(Base):
 class ProjectMember(Base):
     __tablename__ = "project_members"
 
-    project_id: Mapped[int] = mapped_column(ForeIGNKey("projects.id"), primary_key=True)
+    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), primary_key=True)  # Исправлено!
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
 
 
