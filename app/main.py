@@ -76,4 +76,8 @@ def read_root():
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    return FileResponse("kanban/app/kanban.ico")
+    return FileResponse("app/kanbanicon.ico")
+
+@app.get("/users/", response_model=list[schemas.UserResponse])
+def get_users(db: Session = Depends(get_db)):
+    return crud.get_users(db)
