@@ -4,3 +4,4 @@ sqlalchemy>=2.0.0
 pyodbc>=4.0.0
 python-jose[cryptography]
 python-multipart
+passlib>=1.7.4
