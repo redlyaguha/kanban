@@ -62,7 +62,7 @@ def create_task(
 
 @app.post("/token", response_model=schemas.Token)
 async def login_for_access_token(
-    form_data: OAuth2PasswordRequestForm = Depends(),  # Используйте OAuth2PasswordRequestForm
+    form_data: OAuth2PasswordRequestForm = Depends(),  # OAuth2PasswordRequestForm
     db: Session = Depends(get_db)
 ):
     user = authenticate_user(db, form_data.username, form_data.password)  # form_data.username → email
@@ -80,7 +80,7 @@ def read_root():
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    return FileResponse("app/kanbanicon.ico")
+    return FileResponse("app/ico/kanbanicon.ico")
 
 @app.get("/users/", response_model=list[schemas.UserResponse])
 def get_users(db: Session = Depends(get_db)):
