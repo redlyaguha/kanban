@@ -49,3 +49,10 @@ def authenticate_user(db: Session, email: str, password: str):
     if not verify_password(password, user.hashed_password):
         return None  # Пароль неверный
     return user  # Аутентификация успешна
+
+def create_column(db: Session, column: schemas.ColumnCreate, project_id: int):
+    db_column = models.Column(**column.dict(), project_id=project_id)
+    db.add(db_column)
+    db.commit()
+    db.refresh(db_column)
+    return db_column

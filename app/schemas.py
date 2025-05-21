@@ -50,3 +50,13 @@ class TokenData(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str
+
+class ColumnCreate(BaseModel):
+    name: str
+    order: int | None = 0
+
+class ColumnResponse(ColumnCreate):
+    id: int
+    project_id: int
+    class Config:
+        from_attributes = True

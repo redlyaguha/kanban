@@ -51,13 +51,17 @@ def add_project_member(
     return crud.add_user_to_project(db=db, project_id=project_id, user_id=user_id)
 
 @app.post("/columns/{column_id}/tasks/", response_model=schemas.TaskResponse)
-def create_task(
-    column_id: int,
-    task: schemas.TaskCreate,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
-):
-    return crud.create_task(db=db, task=task, column_id=column_id, author_id=current_user.id)
+def create_task(db: Session, task: schemas.TaskCreate, column_id: int, author_id: int):
+    # Проверяем, существует ли колонка
+    if not db.query(exists().where(models.Column.id == column_id)).scalar():
+        raise HTTPException(status_code=404, detail="Колонка не найдена")
+
+    # Создаем задачу
+    db_task = models.Task(**task.dict(), column_id=column_id, author_id=author_id)
+    db.add(db_task)
+    db.commit()
+    db.refresh(db_task)
+    return db_task
 
 
 @app.post("/token", response_model=schemas.Token)
@@ -85,3 +89,22 @@ async def favicon():
 @app.get("/users/", response_model=list[schemas.UserResponse])
 def get_users(db: Session = Depends(get_db)):
     return crud.get_users(db)
+
+
+@app.post("/projects/{project_id}/columns/", response_model=schemas.ColumnResponse)
+def create_column(
+        project_id: int,
+        column: schemas.ColumnCreate,
+        db: Session = Depends(get_db),
+        current_user: models.User = Depends(get_current_user)
+):
+    # Проверка, существует ли проект
+    db_project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not db_project:
+        raise HTTPException(status_code=404, detail="Проект не найден")
+
+    # Проверка прав
+    if db_project.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+
+    return crud.create_column(db=db, column=column, project_id=project_id)
