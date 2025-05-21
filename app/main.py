@@ -8,6 +8,7 @@ from .auth import get_current_user, oauth2_scheme, verify_password, create_acces
 from app.auth import verify_password, create_access_token
 from fastapi.security import OAuth2PasswordRequestForm
 from .crud import authenticate_user
+from sqlalchemy import exists
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -50,18 +51,31 @@ def add_project_member(
 ):
     return crud.add_user_to_project(db=db, project_id=project_id, user_id=user_id)
 
+
 @app.post("/columns/{column_id}/tasks/", response_model=schemas.TaskResponse)
-def create_task(db: Session, task: schemas.TaskCreate, column_id: int, author_id: int):
-    # Проверяем, существует ли колонка
-    if not db.query(exists().where(models.Column.id == column_id)).scalar():
+def create_task(
+        column_id: int,
+        task: schemas.TaskCreate,
+        db: Session = Depends(get_db),
+        current_user: models.User = Depends(get_current_user)
+):
+    # Проверка существования колонки
+    column = db.query(models.Column).filter(models.Column.id == column_id).first()
+    if not column:
         raise HTTPException(status_code=404, detail="Колонка не найдена")
 
-    # Создаем задачу
-    db_task = models.Task(**task.dict(), column_id=column_id, author_id=author_id)
+    # Создание задачи
+    db_task = models.Task(
+        title=task.title,
+        description=task.description,
+        priority=task.priority,
+        column_id=column_id,
+        author_id=current_user.id
+    )
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
-    return db_task
+    return db_task  # Возвращаем ORM-объект, который конвертируется в TaskResponse
 
 
 @app.post("/token", response_model=schemas.Token)
