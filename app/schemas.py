@@ -67,3 +67,14 @@ class TaskMove(BaseModel):
 class ProjectDeleteResponse(BaseModel):
     status: str
     message: str
+
+class TaskLogCreate(BaseModel):
+    task_id: int
+    message: str
+    user_id: int
+
+class TaskLogResponse(TaskLogCreate):
+    id: int
+    created_at: datetime
+    class Config:
+        from_attributes = True

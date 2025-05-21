@@ -75,12 +75,17 @@ def move_task(db: Session, task_id: int, new_column_id: int, user_id: int):
     if db_task.author_id != user_id and user_id not in [m.user_id for m in project.members]:
         raise HTTPException(status_code=403, detail="Нет прав на перемещение")
 
+
+
     # Обновляем колонку задачи
     db_task.column_id = new_column_id
     db.commit()
     db.refresh(db_task)
 
     # Логирование действия
+    if not task_id:
+        raise ValueError("Task ID cannot be None")
+
     log_message = f"Задача перемещена в колонку '{new_column.name}'"
     db_log = models.TaskLog(
         task_id=task_id,
@@ -94,17 +99,23 @@ def move_task(db: Session, task_id: int, new_column_id: int, user_id: int):
 
 
 def delete_project(db: Session, project_id: int, user_id: int):
-    # Находим проект
-    db_project = db.query(models.Project).filter(models.Project.id == project_id).first()
-    if not db_project:
-        raise HTTPException(status_code=404, detail="Проект не найден")
+    db_project = db.query(models.Project).get(project_id)
 
-    # Проверяем права (только владелец может удалить)
+    # Проверка прав
     if db_project.owner_id != user_id:
         raise HTTPException(status_code=403, detail="Недостаточно прав")
 
-    # Удаляем проект (каскадное удаление колонок и задач)
+    # Ручное каскадное удаление
+    for column in db_project.columns:
+        for task in column.tasks:
+            # Удаляем все логи задачи
+            db.query(models.TaskLog).filter(models.TaskLog.task_id == task.id).delete()
+            # Удаляем саму задачу
+            db.delete(task)
+        db.delete(column)
+
     db.delete(db_project)
     db.commit()
+
     return {"status": "success", "message": "Проект удален"}
 

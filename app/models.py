@@ -53,15 +53,15 @@ class Task(Base):
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
 
     column: Mapped["Column"] = relationship(back_populates="tasks")
-    logs: Mapped[list["TaskLog"]] = relationship(back_populates="task")
+    logs: Mapped[list["TaskLog"]] = relationship(back_populates="task", cascade="all, delete-orphan")
+
 
 class TaskLog(Base):
     __tablename__ = "task_logs"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"))
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)  # <-- Это обязательно
+    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
     message: Mapped[str] = mapped_column(Text)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
-
-    task: Mapped["Task"] = relationship(back_populates="logs")
+    task: Mapped["Task"] = relationship(back_populates="logs", cascade="all, delete-orphan")

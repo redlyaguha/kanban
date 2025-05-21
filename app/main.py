@@ -144,3 +144,14 @@ def delete_project(
     current_user: models.User = Depends(get_current_user)
 ):
     return crud.delete_project(db=db, project_id=project_id, user_id=current_user.id)
+
+@app.get("/tasks/{task_id}/logs", response_model=list[schemas.TaskLogResponse])
+def get_task_logs(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    logs = db.query(models.TaskLog).filter(models.TaskLog.task_id == task_id).all()
+    if not logs:
+        raise HTTPException(status_code=404, detail="No logs found")
+    return logs
