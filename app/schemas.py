@@ -60,3 +60,6 @@ class ColumnResponse(ColumnCreate):
     project_id: int
     class Config:
         from_attributes = True
+
+class TaskMove(BaseModel):
+    new_column_id: int

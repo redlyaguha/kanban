@@ -122,3 +122,17 @@ def create_column(
         raise HTTPException(status_code=403, detail="Недостаточно прав")
 
     return crud.create_column(db=db, column=column, project_id=project_id)
+
+@app.put("/tasks/{task_id}/move/", response_model=schemas.TaskResponse)
+def move_task(
+    task_id: int,
+    task_move: schemas.TaskMove,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    return crud.move_task(
+        db=db,
+        task_id=task_id,
+        new_column_id=task_move.new_column_id,
+        user_id=current_user.id
+    )
