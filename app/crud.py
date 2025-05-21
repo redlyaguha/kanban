@@ -4,8 +4,9 @@ from .auth import get_password_hash
 from .auth import verify_password
 
 # Users
-def get_user(db: Session, user_id: int):
-    return db.query(models.User).filter(models.User.id == user_id).first()
+def get_users(db: Session):
+    """Возвращает список всех пользователей."""
+    return db.query(models.User).all()
 
 def create_user(db: Session, user: schemas.UserCreate):
     hashed_password = get_password_hash(user.password)  # Используем хеширование
