@@ -63,3 +63,7 @@ class ColumnResponse(ColumnCreate):
 
 class TaskMove(BaseModel):
     new_column_id: int
+
+class ProjectDeleteResponse(BaseModel):
+    status: str
+    message: str

@@ -136,3 +136,11 @@ def move_task(
         new_column_id=task_move.new_column_id,
         user_id=current_user.id
     )
+
+@app.delete("/projects/{project_id}", response_model=schemas.ProjectDeleteResponse)
+def delete_project(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    return crud.delete_project(db=db, project_id=project_id, user_id=current_user.id)

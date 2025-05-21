@@ -92,3 +92,19 @@ def move_task(db: Session, task_id: int, new_column_id: int, user_id: int):
 
     return db_task
 
+
+def delete_project(db: Session, project_id: int, user_id: int):
+    # Находим проект
+    db_project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not db_project:
+        raise HTTPException(status_code=404, detail="Проект не найден")
+
+    # Проверяем права (только владелец может удалить)
+    if db_project.owner_id != user_id:
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+
+    # Удаляем проект (каскадное удаление колонок и задач)
+    db.delete(db_project)
+    db.commit()
+    return {"status": "success", "message": "Проект удален"}
+
