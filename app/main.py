@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from . import crud, models, schemas
 from .database import SessionLocal, engine
 from fastapi.responses import FileResponse
-from .auth import get_current_user, oauth2_scheme
+from .auth import get_current_user, oauth2_scheme, verify_password, create_access_token
+from app.auth import verify_password, create_access_token
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -67,6 +68,7 @@ async def login_for_access_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
+    # Создаем токен
     access_token = create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
