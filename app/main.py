@@ -6,6 +6,8 @@ from .database import SessionLocal, engine
 from fastapi.responses import FileResponse
 from .auth import get_current_user, oauth2_scheme, verify_password, create_access_token
 from app.auth import verify_password, create_access_token
+from fastapi.security import OAuth2PasswordRequestForm
+from .crud import authenticate_user
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -57,18 +59,18 @@ def create_task(
 ):
     return crud.create_task(db=db, task=task, column_id=column_id, author_id=current_user.id)
 
+
 @app.post("/token", response_model=schemas.Token)
 async def login_for_access_token(
-    form_data: schemas.UserLogin,
+    form_data: OAuth2PasswordRequestForm = Depends(),  # Используйте OAuth2PasswordRequestForm
     db: Session = Depends(get_db)
 ):
-    user = crud.get_user_by_email(db, email=form_data.email)
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    user = authenticate_user(db, form_data.username, form_data.password)  # form_data.username → email
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
-    # Создаем токен
     access_token = create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 

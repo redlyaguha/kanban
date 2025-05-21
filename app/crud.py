@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from . import models, schemas
 from .auth import get_password_hash
+from .auth import verify_password
 
 # Users
 def get_user(db: Session, user_id: int):
@@ -38,3 +39,12 @@ def create_task(db: Session, task: schemas.TaskCreate, column_id: int, author_id
 
 def get_user_by_email(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).first()
+
+def authenticate_user(db: Session, email: str, password: str):
+    """Проверяет email и пароль пользователя."""
+    user = get_user_by_email(db, email)  # Предполагается, что эта функция уже есть в crud.py
+    if not user:
+        return None  # Пользователь не найден
+    if not verify_password(password, user.hashed_password):
+        return None  # Пароль неверный
+    return user  # Аутентификация успешна
