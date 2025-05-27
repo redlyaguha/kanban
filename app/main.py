@@ -8,7 +8,7 @@ from .auth import get_current_user, oauth2_scheme, verify_password, create_acces
 from app.auth import verify_password, create_access_token
 from fastapi.security import OAuth2PasswordRequestForm
 from .crud import authenticate_user
-from sqlalchemy import exists
+from sqlalchemy import exists, func
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -59,23 +59,18 @@ def create_task(
         db: Session = Depends(get_db),
         current_user: models.User = Depends(get_current_user)
 ):
-    # Проверка существования колонки
-    column = db.query(models.Column).filter(models.Column.id == column_id).first()
+    column = db.query(models.Column).filter(
+        models.Column.id == column_id,
+        models.Column.is_active == True
+    ).first()
     if not column:
-        raise HTTPException(status_code=404, detail="Колонка не найдена")
+        raise HTTPException(status_code=404, detail="Колонка не найдена или неактивна")
 
-    # Создание задачи
-    db_task = models.Task(
-        title=task.title,
-        description=task.description,
-        priority=task.priority,
-        column_id=column_id,
-        author_id=current_user.id
-    )
+    db_task = models.Task(**task.dict(), column_id=column_id, author_id=current_user.id)
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
-    return db_task  # Возвращаем ORM-объект, который конвертируется в TaskResponse
+    return db_task
 
 
 @app.post("/token", response_model=schemas.Token)
@@ -152,3 +147,132 @@ def update_project(
 
     updated_project = crud.update_project(db, project_id, project_update.name)
     return updated_project
+
+
+@app.put("/columns/{column_id}", response_model=schemas.ColumnResponse)
+def update_column(
+        column_id: int,
+        column_update: schemas.ColumnCreate,
+        db: Session = Depends(get_db),
+        current_user: models.User = Depends(get_current_user)
+):
+    db_column = crud.get_column(db, column_id)
+    if not db_column:
+        raise HTTPException(status_code=404, detail="Колонка не найдена")
+    if db_column.project.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+
+    updated_column = crud.update_column(db, column_id, column_update.name, column_update.order)
+    return updated_column
+
+
+@app.delete("/columns/{column_id}")
+def deactivate_column(column_id: int, db: Session = Depends(get_db)):
+    result = crud.delete_column(db, column_id)
+    return result
+
+
+@app.get("/tasks/{task_id}", response_model=schemas.TaskResponse)
+def read_task(task_id: int, db: Session = Depends(get_db)):
+    task = crud.get_task(db, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    return task
+
+
+@app.put("/tasks/{task_id}", response_model=schemas.TaskResponse)
+def update_task(
+        task_id: int,
+        task_update: schemas.TaskCreate,
+        db: Session = Depends(get_db),
+        current_user: models.User = Depends(get_current_user)
+):
+    db_task = crud.get_task(db, task_id)
+    if not db_task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    if db_task.author_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+
+    updated_task = crud.update_task(db, task_id, task_update.title, task_update.description, task_update.priority)
+    return updated_task
+
+
+@app.delete("/tasks/{task_id}")
+def deactivate_task(task_id: int, db: Session = Depends(get_db)):
+    result = crud.delete_task(db, task_id)
+    return result
+
+    crud.delete_task(db, task_id)
+    return {"message": "Задача удалена"}
+@app.delete("/projects/{project_id}/remove-member/{user_id}")
+def remove_member(
+    project_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    return crud.remove_user_from_project(db, project_id, user_id)
+@app.get("/columns/{column_id}/tasks/", response_model=list[schemas.TaskResponse])
+def read_tasks_by_column(column_id: int, priority: int = None, db: Session = Depends(get_db)):
+    return crud.get_tasks_by_column(db, column_id, priority)
+@app.get("/projects/all", response_model=list[schemas.ProjectResponse])
+def get_all_projects(
+    is_active: bool = True,
+    db: Session = Depends(get_db)
+):
+    return crud.get_projects(db, is_active)
+@app.get("/tasks/{task_id}/logs/", response_model=list[schemas.TaskLogResponse])
+def read_task_logs(task_id: int, db: Session = Depends(get_db)):
+    logs = crud.get_task_logs(db, task_id)
+    if not logs:
+        raise HTTPException(status_code=404, detail="Логи не найдены")
+    return logs
+
+@app.post("/columns/{column_id}/restore")
+def restore_column_route(column_id: int, db: Session = Depends(get_db)):
+    result = crud.restore_column(db, column_id)
+    return result
+
+@app.post("/tasks/{task_id}/restore")
+def restore_task_route(task_id: int, db: Session = Depends(get_db)):
+    result = crud.restore_task(db, task_id)
+    return result
+
+
+@app.get("/projects/me/", response_model=list[schemas.ProjectDetails])
+def read_user_projects(
+        db: Session = Depends(get_db),
+        current_user: models.User = Depends(get_current_user)
+):
+    # Проекты, где пользователь - владелец
+    owned = db.query(models.Project).filter(
+        models.Project.owner_id == current_user.id,
+        models.Project.is_active == True
+    ).all()
+
+    # Проекты, где пользователь - участник
+    member = db.query(models.Project).join(models.ProjectMember).filter(
+        models.ProjectMember.user_id == current_user.id,
+        models.Project.is_active == True
+    ).all()
+
+    # Объедините списки и уберите дубликаты
+    projects = list(set(owned + member))
+
+    # Подсчет задач и формирование ответа
+    result = []
+    for project in projects:
+        task_count = db.query(func.count(models.Task.id)).join(models.Column).filter(
+            models.Column.project_id == project.id,
+            models.Task.is_active == True  # Учет активности задач
+        ).scalar()
+
+        result.append({
+            "id": project.id,
+            "name": project.name,
+            "owner_id": project.owner_id,
+            "task_count": task_count,
+            "members": [schemas.ProjectMemberResponse(**u.__dict__) for u in project.members]
+        })
+
+    return result

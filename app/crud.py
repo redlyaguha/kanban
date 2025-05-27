@@ -3,6 +3,9 @@ from sqlalchemy.orm import Session
 from . import models, schemas
 from .auth import get_password_hash
 from .auth import verify_password
+from sqlalchemy import func
+from .models import Task, Column
+
 
 # Users
 def get_users(db: Session):
@@ -88,3 +91,96 @@ def restore_project(db: Session, project_id: int):
     project.is_active = True  # Восстановление
     db.commit()
     return {"message": "Проект восстановлен"}
+def update_project(db: Session, project_id: int, new_name: str):
+    db_project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    db_project.name = new_name
+    db.commit()
+    db.refresh(db_project)
+    return db_project
+
+def get_column(db: Session, column_id: int):
+    return db.query(models.Column).filter(models.Column.id == column_id, models.Column.is_active == True).first()
+
+def delete_column(db: Session, column_id: int):
+    column = get_column(db, column_id)
+    if not column:
+        raise HTTPException(status_code=404, detail="Колонка не найдена")
+    column.is_active = False  # Мягкое удаление
+    db.commit()
+    return {"message": "Колонка деактивирована"}
+
+def restore_column(db: Session, column_id: int):
+    column = db.query(models.Column).filter(models.Column.id == column_id).first()
+    if not column:
+        raise HTTPException(status_code=404, detail="Колонка не найдена")
+    column.is_active = True  # Восстановление
+    db.commit()
+    return {"message": "Колонка восстановлена"}
+
+def update_column(db: Session, column_id: int, new_name: str, new_order: int):
+    db_column = get_column(db, column_id)
+    db_column.name = new_name
+    db_column.order = new_order
+    db.commit()
+    db.refresh(db_column)
+    return db_column
+
+
+
+def get_task(db: Session, task_id: int):
+    return db.query(models.Task).filter(models.Task.id == task_id, models.Task.is_active == True).first()
+
+def delete_task(db: Session, task_id: int):
+    task = get_task(db, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    task.is_active = False  # Мягкое удаление
+    db.commit()
+    return {"message": "Задача деактивирована"}
+
+def restore_task(db: Session, task_id: int):
+    task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    task.is_active = True  # Восстановление
+    db.commit()
+    return {"message": "Задача восстановлена"}
+
+def update_task(db: Session, task_id: int, new_title: str, new_description: str, new_priority: int):
+    db_task = get_task(db, task_id)
+    db_task.title = new_title
+    db_task.description = new_description
+    db_task.priority = new_priority
+    db.commit()
+    db.refresh(db_task)
+    return db_task
+
+
+
+def remove_user_from_project(db: Session, project_id: int, user_id: int):
+    member = db.query(models.ProjectMember).filter(
+        models.ProjectMember.project_id == project_id,
+        models.ProjectMember.user_id == user_id
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Пользователь не состоит в проекте")
+
+    db.delete(member)
+    db.commit()
+    return {"message": "Пользователь удален из проекта"}
+def get_tasks_by_column(db: Session, column_id: int, priority: int = None):
+    query = db.query(models.Task).filter(models.Task.column_id == column_id, models.Task.is_active == True)
+    if priority is not None:
+        query = query.filter(models.Task.priority == priority)
+    return query.all()
+
+def get_projects(db: Session, is_active: bool = True):
+    return db.query(models.Project).filter(models.Project.is_active == is_active).all()
+
+def get_task_logs(db: Session, task_id: int):
+    return db.query(models.TaskLog).filter(models.TaskLog.task_id == task_id).all()
+
+def get_task_count_by_project(db: Session, project_id: int):
+    return db.query(func.count(Task.id)).join(Column).filter(Column.project_id == project_id).scalar()
+
+
