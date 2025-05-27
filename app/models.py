@@ -16,11 +16,10 @@ class User(Base):
 
 class Project(Base):
     __tablename__ = "projects"
-
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(255))
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     members: Mapped[list["User"]] = relationship(secondary="project_members", back_populates="projects")
     columns: Mapped[list["Column"]] = relationship(back_populates="project")
 

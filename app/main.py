@@ -107,32 +107,48 @@ def get_users(db: Session = Depends(get_db)):
 
 @app.post("/projects/{project_id}/columns/", response_model=schemas.ColumnResponse)
 def create_column(
-        project_id: int,
-        column: schemas.ColumnCreate,
-        db: Session = Depends(get_db),
-        current_user: models.User = Depends(get_current_user)
-):
-    # Проверка, существует ли проект
-    db_project = db.query(models.Project).filter(models.Project.id == project_id).first()
-    if not db_project:
-        raise HTTPException(status_code=404, detail="Проект не найден")
-
-    # Проверка прав
-    if db_project.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Недостаточно прав")
-
-    return crud.create_column(db=db, column=column, project_id=project_id)
-
-@app.put("/tasks/{task_id}/move/", response_model=schemas.TaskResponse)
-def move_task(
-    task_id: int,
-    task_move: schemas.TaskMove,
+    project_id: int,
+    column: schemas.ColumnCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    return crud.move_task(
-        db=db,
-        task_id=task_id,
-        new_column_id=task_move.new_column_id,
-        user_id=current_user.id
-    )
+    # Проверка активности проекта
+    project = db.query(models.Project).filter(
+        models.Project.id == project_id,
+        models.Project.is_active == True
+    ).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Проект не найден или неактивен")
+    db_column = models.Column(**column.dict(), project_id=project_id)
+    db.add(db_column)
+    db.commit()
+    db.refresh(db_column)
+    return crud.create_column(db=db, column=column, project_id=project_id)
+
+
+@app.delete("/projects/{project_id}")
+def deactivate_project(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    result = crud.delete_project(db, project_id)
+    return result
+
+@app.post("/projects/{project_id}/restore")
+def restore_project_route(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    result = crud.restore_project(db, project_id)
+    return result
+
+
+@app.put("/projects/{project_id}", response_model=schemas.ProjectResponse)
+def update_project(
+        project_id: int,
+        project_update: schemas.ProjectCreate,
+        db: Session = Depends(get_db),
+        current_user: models.User = Depends(get_current_user)
+):
+    db_project = crud.get_project(db, project_id)
+    if not db_project:
+        raise HTTPException(status_code=404, detail="Проект не найден")
+    if db_project.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+
+    updated_project = crud.update_project(db, project_id, project_update.name)
+    return updated_project

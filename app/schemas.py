@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
 class UserCreate(BaseModel):
@@ -58,8 +58,4 @@ class ColumnCreate(BaseModel):
 class ColumnResponse(ColumnCreate):
     id: int
     project_id: int
-    class Config:
-        from_attributes = True
-
-class TaskMove(BaseModel):
-    new_column_id: int
+    model_config = ConfigDict(from_attributes=True)  # Для Pydantic v2

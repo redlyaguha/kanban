@@ -1,8 +1,8 @@
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from . import models, schemas
 from .auth import get_password_hash
 from .auth import verify_password
-from fastapi import HTTPException
 
 # Users
 def get_users(db: Session):
@@ -33,6 +33,14 @@ def add_user_to_project(db: Session, project_id: int, user_id: int):
 
 # Tasks
 def create_task(db: Session, task: schemas.TaskCreate, column_id: int, author_id: int):
+    # Проверка активности проекта через колонку
+    column = db.query(models.Column).filter(
+        models.Column.id == column_id,
+        models.Column.project.has(is_active=True)
+    ).first()
+    if not column:
+        raise HTTPException(status_code=404, detail="Колонка или проект неактивны")
+    # Создание задачи...
     db_task = models.Task(**task.model_dump(), column_id=column_id, author_id=author_id)
     db.add(db_task)
     db.commit()
@@ -56,39 +64,27 @@ def create_column(db: Session, column: schemas.ColumnCreate, project_id: int):
     db.add(db_column)
     db.commit()
     db.refresh(db_column)
-    return db_column
+    return db_column  # Возвращает ORM-объект, без Session
 
 
-def move_task(db: Session, task_id: int, new_column_id: int, user_id: int):
-    # Находим задачу
-    db_task = db.query(models.Task).filter(models.Task.id == task_id).first()
-    if not db_task:
-        raise HTTPException(status_code=404, detail="Задача не найдена")
+def get_project(db: Session, project_id: int):
+    return db.query(models.Project).filter(
+        models.Project.id == project_id,
+        models.Project.is_active == True
+    ).first()
 
-    # Находим новую колонку
-    new_column = db.query(models.Column).filter(models.Column.id == new_column_id).first()
-    if not new_column:
-        raise HTTPException(status_code=404, detail="Новая колонка не найдена")
-
-    # Проверка прав: автор задачи или участник проекта
-    project = new_column.project  # Получаем проект, к которому относится новая колонка
-    if db_task.author_id != user_id and user_id not in [m.user_id for m in project.members]:
-        raise HTTPException(status_code=403, detail="Нет прав на перемещение")
-
-    # Обновляем колонку задачи
-    db_task.column_id = new_column_id
+def delete_project(db: Session, project_id: int):
+    project = get_project(db, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Проект не найден")
+    project.is_active = False  # Мягкое удаление
     db.commit()
-    db.refresh(db_task)
+    return {"message": "Проект деактивирован"}
 
-    # Логирование действия
-    log_message = f"Задача перемещена в колонку '{new_column.name}'"
-    db_log = models.TaskLog(
-        task_id=task_id,
-        user_id=user_id,
-        message=log_message
-    )
-    db.add(db_log)
+def restore_project(db: Session, project_id: int):
+    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Проект не найден")
+    project.is_active = True  # Восстановление
     db.commit()
-
-    return db_task
-
+    return {"message": "Проект восстановлен"}
