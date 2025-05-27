@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
+from typing import List, Optional
 
 class UserCreate(BaseModel):
     email: str
@@ -22,7 +23,7 @@ class ProjectResponse(ProjectCreate):
 
 class TaskCreate(BaseModel):
     title: str
-    description: str | None = None
+    description: Optional[str] = None
     priority: int = 2
 
 class TaskResponse(TaskCreate):
@@ -30,6 +31,7 @@ class TaskResponse(TaskCreate):
     author_id: int
     column_id: int
     created_at: datetime
+    is_active: bool  # Добавлено
     class Config:
         from_attributes = True
 
@@ -45,7 +47,7 @@ class Token(BaseModel):
     token_type: str
 
 class TokenData(BaseModel):
-    email: str | None = None
+    email: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: str
@@ -53,28 +55,23 @@ class UserLogin(BaseModel):
 
 class ColumnCreate(BaseModel):
     name: str
-    order: int | None = 0
+    order: Optional[int] = 0
 
 class ColumnResponse(ColumnCreate):
     id: int
     project_id: int
+    is_active: bool  # Добавлено
     class Config:
         from_attributes = True
-
-class TaskMove(BaseModel):
-    new_column_id: int
-
-class ProjectDeleteResponse(BaseModel):
-    status: str
-    message: str
-
-class TaskLogCreate(BaseModel):
-    task_id: int
-    message: str
-    user_id: int
-
-class TaskLogResponse(TaskLogCreate):
+class ProjectMemberResponse(BaseModel):
     id: int
-    created_at: datetime
+    email: str
     class Config:
         from_attributes = True
+
+class ProjectDetails(ProjectResponse):
+    members: List[ProjectMemberResponse] = []
+    task_count: int = 0
+    class Config:
+        from_attributes = True
+
