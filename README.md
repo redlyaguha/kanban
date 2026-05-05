@@ -20,8 +20,19 @@ FastAPI веб-приложение для управления проектам
 - **CORS Middleware** - поддержка кросс-доменных запросов
 
 ## Структура проекта
-app/ ├── init.py ├── main.py # Точка входа FastAPI приложения ├── auth.py # Аутентификация (OAuth2, JWT токены) ├── crud.py # CRUD операции для всех моделей ├── database.py # Настройка подключения к БД (SQLAlchemy) ├── models.py # Модели данных (SQLAlchemy ORM) ├── schemas.py # Pydantic схемы для валидации └── ico/ └── kanbanicon.ico requirements.txt # Зависимости проекта Лабораторная.pdf # Описание выполненной работы
+app/
+├── __init__.py
+├── main.py           # Точка входа FastAPI приложения
+├── auth.py           # Аутентификация (OAuth2, JWT токены)
+├── crud.py           # CRUD операции для всех моделей
+├── database.py       # Настройка подключения к БД (SQLAlchemy)
+├── models.py         # Модели данных (SQLAlchemy ORM)
+├── schemas.py        # Pydantic схемы для валидации
+└── ico/
+    └── kanbanicon.ico
 
+requirements.txt       # Зависимости проекта
+Лабораторная.pdf      # Описание выполненной работы
 
 ## Модели данных
 
